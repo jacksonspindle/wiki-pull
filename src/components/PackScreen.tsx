@@ -79,7 +79,8 @@ export default function PackScreen({ onCollectionUpdate }: PackScreenProps) {
     }
   }, [phase]);
 
-  // Start tear on mousedown in the tear zone (top 18% of pack)
+  // Start tear on mousedown in the tear zone (top 18% of pack), or click anywhere to open
+  const didTearRef = useRef(false);
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (phase !== 'idle' || gachaState.dailyPacks <= 0) return;
     if (!packRef.current) return;
@@ -87,12 +88,15 @@ export default function PackScreen({ onCollectionUpdate }: PackScreenProps) {
     const rect = packRef.current.getBoundingClientRect();
     const y = (e.clientY - rect.top) / rect.height;
 
-    // Only start tear if clicking in the top ~18% of the pack
+    // Start tear if clicking in the top ~18% of the pack
     if (y <= 0.18) {
+      didTearRef.current = true;
       tearStartX.current = e.clientX;
       setPhase('tearing');
       setTearProgress(0);
       playPackCrinkle();
+    } else {
+      didTearRef.current = false;
     }
   }, [phase, gachaState.dailyPacks]);
 
@@ -174,6 +178,14 @@ export default function PackScreen({ onCollectionUpdate }: PackScreenProps) {
       loadCards();
     }, 1000);
   }, []);
+
+  // Click to open (fires after mouseup — only if we didn't start a tear)
+  const handleClick = useCallback(() => {
+    if (phase !== 'idle' || gachaState.dailyPacks <= 0) return;
+    if (didTearRef.current) return;
+    playPackCrinkle();
+    completeTear();
+  }, [phase, gachaState.dailyPacks, completeTear]);
 
   const loadCards = useCallback(async () => {
     try {
@@ -373,9 +385,10 @@ export default function PackScreen({ onCollectionUpdate }: PackScreenProps) {
         >
           <motion.div
             ref={packRef}
-            className="pack-wrapper relative cursor-grab active:cursor-grabbing"
+            className="pack-wrapper relative cursor-pointer active:cursor-grabbing"
             onMouseMove={handleMouseMove}
             onMouseDown={handleMouseDown}
+            onClick={handleClick}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             style={{
