@@ -110,6 +110,33 @@ function RarityFlare({ rarity }: { rarity: Rarity }) {
   );
 }
 
+function RarityReason({ card }: { card: WikiCard }) {
+  const { rarity, wikiRank, dailyViews, title } = card;
+
+  if (wikiRank && dailyViews) {
+    const viewsFormatted = dailyViews.toLocaleString();
+    const ordinal = wikiRank === 1 ? '1st' : wikiRank === 2 ? '2nd' : wikiRank === 3 ? '3rd' : `${wikiRank}th`;
+    return (
+      <>
+        <span className="text-gray-300">&ldquo;{title}&rdquo;</span> is the{' '}
+        <span className="text-white font-medium">{ordinal} most-viewed</span> article on Wikipedia right now
+        with <span className="text-white font-medium">{viewsFormatted}</span> views yesterday.
+      </>
+    );
+  }
+
+  // Fallback for cards without rank data
+  const reasons: Record<string, string> = {
+    LR: 'One of the most-viewed pages on all of Wikipedia.',
+    UR: 'Among the top 50 most-visited Wikipedia articles.',
+    SSR: 'In the top 200 most-trafficked articles on Wikipedia.',
+    SR: 'Ranks in the top 500 most-viewed Wikipedia pages.',
+    R: 'A top-1000 Wikipedia article by daily pageviews.',
+  };
+
+  return <>{reasons[rarity] || ''}</>;
+}
+
 export default function CardReveal({ cards, onComplete }: CardRevealProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isRevealed, setIsRevealed] = useState(false);
@@ -248,7 +275,7 @@ export default function CardReveal({ cards, onComplete }: CardRevealProps) {
         )}
       </motion.div>
 
-      {/* Rarity label */}
+      {/* Rarity label + why it's rare */}
       <AnimatePresence>
         {isRevealed && (
           <motion.div
@@ -256,20 +283,32 @@ export default function CardReveal({ cards, onComplete }: CardRevealProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ delay: 0.2 }}
-            className="mt-6 text-center select-none"
+            className="mt-6 text-center select-none max-w-xs"
           >
-            <span className={`text-lg font-bold ${rarityConfig.color}`}>
-              {rarityConfig.name}
-            </span>
-            {currentCard.isNew && (
-              <motion.span
-                className="ml-3 text-yellow-500 text-sm font-semibold"
-                initial={{ scale: 0 }}
-                animate={{ scale: [0, 1.3, 1] }}
-                transition={{ delay: 0.4, duration: 0.4 }}
+            <div>
+              <span className={`text-lg font-bold ${rarityConfig.color}`}>
+                {rarityConfig.name}
+              </span>
+              {currentCard.isNew && (
+                <motion.span
+                  className="ml-3 text-yellow-500 text-sm font-semibold"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: [0, 1.3, 1] }}
+                  transition={{ delay: 0.4, duration: 0.4 }}
+                >
+                  &#9733; NEW
+                </motion.span>
+              )}
+            </div>
+            {rarityIndex >= 2 && (
+              <motion.p
+                className="text-gray-500 text-xs mt-2 leading-relaxed"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
               >
-                &#9733; NEW
-              </motion.span>
+                <RarityReason card={currentCard} />
+              </motion.p>
             )}
           </motion.div>
         )}

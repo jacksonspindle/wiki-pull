@@ -50,6 +50,8 @@ export interface WikiCard {
   articleLength: number;
   languages: number;
   wikiUrl: string;
+  wikiRank: number | null;
+  dailyViews: number | null;
   pulledAt: string;
   isNew: boolean;
   duplicateCount: number;

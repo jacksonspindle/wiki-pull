@@ -104,13 +104,13 @@ export function getArticlesForTier(rarity: string, articles: RankedArticle[]): R
 }
 
 /** Pick a random article from a rarity tier using live pageview data */
-async function pickArticleFromTier(rarity: Rarity): Promise<string | null> {
+async function pickArticleFromTier(rarity: Rarity): Promise<RankedArticle | null> {
   const topArticles = await fetchTopArticles();
 
   if (topArticles.length > 0) {
     const pool = getArticlesForTier(rarity, topArticles);
     if (pool.length > 0) {
-      return pool[Math.floor(Math.random() * pool.length)].title;
+      return pool[Math.floor(Math.random() * pool.length)];
     }
   }
 
@@ -256,6 +256,7 @@ function estimatePageviews(rarity: Rarity): number {
 
 export async function generateCard(rarity: Rarity): Promise<WikiCard | null> {
   let summary: WikiSummary | null = null;
+  let rankedArticle: RankedArticle | null = null;
 
   if (rarity === 'C' || rarity === 'UC') {
     summary = await fetchRandomArticle();
@@ -267,12 +268,13 @@ export async function generateCard(rarity: Rarity): Promise<WikiCard | null> {
       }
     }
   } else {
-    const title = await pickArticleFromTier(rarity);
-    if (title) {
-      summary = await fetchArticleSummary(title);
+    rankedArticle = await pickArticleFromTier(rarity);
+    if (rankedArticle) {
+      summary = await fetchArticleSummary(rankedArticle.title);
     }
     if (!summary) {
       summary = await fetchRandomArticle();
+      rankedArticle = null;
     }
   }
 
@@ -295,6 +297,8 @@ export async function generateCard(rarity: Rarity): Promise<WikiCard | null> {
     articleLength: meta.length,
     languages: meta.languages,
     wikiUrl: summary.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${encodeURIComponent(summary.title)}`,
+    wikiRank: rankedArticle?.rank ?? null,
+    dailyViews: rankedArticle?.views ?? null,
     pulledAt: new Date().toISOString(),
     isNew: true,
     duplicateCount: 0,
