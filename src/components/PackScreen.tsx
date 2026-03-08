@@ -21,7 +21,10 @@ interface PackScreenProps {
 type PackPhase = 'idle' | 'tearing' | 'torn' | 'opening' | 'loading' | 'revealing' | 'results';
 
 export default function PackScreen({ onCollectionUpdate }: PackScreenProps) {
-  const [gachaState, setGachaState] = useState(getGachaState());
+  const [gachaState, setGachaState] = useState(() => ({
+    dailyPacks: 0, maxPacks: 0, lastRegenTime: '', pullsSinceGold: 0, pityCounter: 0,
+  }));
+  const [mounted, setMounted] = useState(false);
   const [phase, setPhase] = useState<PackPhase>('idle');
   const [tearProgress, setTearProgress] = useState(0);
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
@@ -33,14 +36,21 @@ export default function PackScreen({ onCollectionUpdate }: PackScreenProps) {
   const tearStartX = useRef<number | null>(null);
   const lastTearSound = useRef(0);
 
+  // Load gacha state from localStorage after mount
+  useEffect(() => {
+    setGachaState(getGachaState());
+    setMounted(true);
+  }, []);
+
   // Regenerate packs on interval
   useEffect(() => {
+    if (!mounted) return;
     const interval = setInterval(() => {
       const updated = regeneratePacks();
       setGachaState(updated);
     }, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [mounted]);
 
   // Track mouse position over pack for holographic effect
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
