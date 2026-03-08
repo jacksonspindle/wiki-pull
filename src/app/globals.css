@@ -1,0 +1,183 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gold: #EAB308;
+  --color-gold-dark: #A16207;
+}
+
+body {
+  background-color: #030712;
+  color: #f9fafb;
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #111827;
+}
+::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4B5563;
+}
+
+/* Rainbow border for LR cards */
+.rainbow-border {
+  position: relative;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.rainbow-border::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--rainbow-angle, 0deg),
+    #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #8b5cf6, #ec4899, #ef4444
+  );
+  z-index: -1;
+  animation: rainbow-rotate 3s linear infinite;
+}
+
+@keyframes rainbow-rotate {
+  to {
+    --rainbow-angle: 360deg;
+  }
+}
+
+@property --rainbow-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* Holographic shimmer */
+.holo-effect {
+  background: linear-gradient(
+    135deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.1) 30%,
+    rgba(255, 200, 100, 0.15) 35%,
+    rgba(100, 200, 255, 0.15) 40%,
+    rgba(200, 100, 255, 0.15) 45%,
+    transparent 50%
+  );
+  background-size: 200% 200%;
+  animation: holo-shimmer 3s ease-in-out infinite;
+}
+
+@keyframes holo-shimmer {
+  0%, 100% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+}
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 4s linear infinite;
+}
+
+.card-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.05) 45%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 55%,
+    transparent 60%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.card-shine:hover::after {
+  transform: translateX(100%);
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-4 {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+::selection {
+  background-color: rgba(234, 179, 8, 0.3);
+  color: white;
+}
+
+/* === Pack holographic effects === */
+
+.pack-holo-foil {
+  transition: background 0.08s ease-out;
+}
+
+/* Gold pack shimmer sweep */
+.pack-gold-shimmer {
+  background: linear-gradient(
+    110deg,
+    transparent 25%,
+    rgba(255, 215, 0, 0.12) 37%,
+    rgba(255, 255, 200, 0.18) 42%,
+    rgba(255, 215, 0, 0.12) 47%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: gold-sweep 3s ease-in-out infinite;
+}
+
+@keyframes gold-sweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Pack hover tilt glow */
+.pack-wrapper:hover .pack-glow {
+  opacity: 1;
+}
+
+/* Tear line glow animation */
+@keyframes tear-glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255,220,100,0.4); }
+  50% { box-shadow: 0 0 20px rgba(255,220,100,0.8); }
+}
+
+/* Pack opening burst */
+@keyframes pack-burst {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  40% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+}
