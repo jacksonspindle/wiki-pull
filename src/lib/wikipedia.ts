@@ -16,88 +16,108 @@ interface WikiSummary {
   length?: number;
 }
 
-// Curated article pools by rarity tier
-export const TOP_ARTICLES: Record<string, string[]> = {
-  LR: [
-    'United States', 'World War II', 'Albert Einstein', 'Earth',
-    'Philosophy', 'Wikipedia', 'Mathematics', 'Universe', 'Science', 'History',
-  ],
-  UR: [
-    'George Washington', 'Abraham Lincoln', 'Leonardo da Vinci', 'William Shakespeare',
-    'Isaac Newton', 'Charles Darwin', 'Napoleon', 'Cleopatra',
-    'Alexander the Great', 'Julius Caesar', 'Nikola Tesla',
-    'Martin Luther King Jr.', 'Mahatma Gandhi', 'Nelson Mandela', 'Barack Obama',
-    'Moon', 'Sun', 'Mars', 'Solar System', 'DNA', 'Evolution', 'Gravity',
-    'Democracy', 'Olympic Games', 'World War I', 'Cold War', 'Renaissance',
-    'Roman Empire', 'Ancient Greece', 'Ancient Egypt', 'China', 'India',
-    'United Kingdom', 'Japan', 'France', 'Germany', 'Russia', 'Brazil', 'Canada',
-  ],
-  SSR: [
-    'Artificial intelligence', 'Climate change', 'Bitcoin', 'Internet',
-    'Computer', 'Electricity', 'Light', 'Water', 'Oxygen', 'Carbon',
-    'Human', 'Brain', 'Heart', 'Cancer', 'Virus',
-    'Football', 'Basketball', 'Baseball', 'Tennis', 'Cricket',
-    'Beethoven', 'Mozart', 'New York City', 'London', 'Paris', 'Tokyo', 'Rome',
-    'Africa', 'Europe', 'Asia', 'Australia', 'Antarctica',
-    'Lion', 'Eagle', 'Whale', 'Dolphin', 'Elephant',
-    'Gold', 'Diamond', 'Hydrogen', 'Helium',
-    'Plato', 'Aristotle', 'Socrates', 'Confucius',
-    'French Revolution', 'American Revolution',
-    'Periodic table', 'Black hole', 'Galaxy', 'Milky Way', 'Big Bang',
-    'Quantum mechanics', 'Apple Inc.', 'Google', 'Microsoft',
-    'Elon Musk', 'Steve Jobs', 'Taylor Swift', 'Michael Jackson', 'The Beatles',
-    'Harry Potter', 'Star Wars', 'Marvel Cinematic Universe',
-    'FIFA World Cup', 'Vaccine', 'Dinosaur', 'Volcano', 'Earthquake',
-    'Nuclear weapon', 'Space exploration', 'Moon landing',
-    'Human rights', 'United Nations', 'Psychology', 'Economics',
-    'Coffee', 'Tea', 'Chocolate', 'Dog', 'Cat', 'Tiger',
-    'Painting', 'Architecture', 'Novel', 'Poetry',
-    'Physics', 'Biology', 'Chemistry', 'Geology',
-    'Airplane', 'Automobile', 'English language',
-    'Bible', 'Quran', 'Christmas',
-  ],
-  SR: [
-    'Penguin', 'Octopus', 'Jellyfish', 'Coral reef', 'Rainforest',
-    'Glacier', 'Desert', 'Copper', 'Silver', 'Platinum', 'Uranium',
-    'Neptune', 'Saturn', 'Jupiter', 'Venus', 'Mercury (planet)',
-    'Hubble Space Telescope', 'International Space Station', 'SpaceX',
-    'Chopin', 'Tchaikovsky', 'Vivaldi',
-    'Van Gogh', 'Picasso', 'Monet', 'Rembrandt', 'Michelangelo',
-    'Mark Twain', 'Charles Dickens', 'Jane Austen',
-    'Thomas Edison', 'Marie Curie', 'Galileo Galilei',
-    'Sigmund Freud', 'Friedrich Nietzsche', 'Immanuel Kant',
-    'Genghis Khan', 'Charlemagne', 'Elizabeth I',
-    'Samurai', 'Knight', 'Viking',
-    'Pyramid', 'Colosseum', 'Great Wall of China', 'Taj Mahal', 'Stonehenge',
-    'Great Barrier Reef', 'Yellowstone',
-    'Eiffel Tower', 'Statue of Liberty',
-    'Mona Lisa', 'Hamlet', 'Romeo and Juliet',
-    'The Odyssey', 'Magna Carta',
-    'Penicillin', 'Cheetah', 'Giraffe', 'Gorilla',
-    'Great white shark', 'Blue whale',
-    'Bald eagle', 'Sushi', 'Pizza', 'Pasta',
-    'Chess', 'Marathon', 'Jazz', 'Blues', 'Hip hop music',
-    'Telescope', 'Microscope', 'Printing press',
-  ],
-  R: [
-    'Capybara', 'Axolotl', 'Platypus', 'Pangolin', 'Narwhal',
-    'Tardigrade', 'Mantis shrimp', 'Sea otter', 'Red panda',
-    'Aurora borealis', 'Lightning', 'Rainbow', 'Tornado',
-    'Pompeii', 'Troy', 'Machu Picchu', 'Angkor Wat', 'Petra',
-    'Fibonacci number', 'Pi', 'Golden ratio', 'Infinity', 'Zero',
-    'Photosynthesis', 'Mitosis', 'Entropy',
-    'Espresso', 'Champagne', 'Ramen', 'Croissant', 'Taco',
-    'Haiku', 'Sonnet', 'Gothic architecture', 'Art Deco', 'Brutalism',
-    'Alchemy', 'Astrology', 'Mythology', 'Folklore', 'Fairy tale',
-    'Morse code', 'Braille', 'Hieroglyph',
-    'Katana', 'Longbow', 'Trebuchet',
-    'Bonsai', 'Flamenco', 'Tango', 'Ballet',
-    'Fresco', 'Mosaic', 'Stained glass',
-    'Abacus', 'Sundial', 'Astrolabe',
-    'Submarine', 'Galleon', 'Hot air balloon',
-    'Origami', 'Calligraphy', 'Pottery',
-  ],
+// --- Dynamic article ranking via Wikimedia Pageviews API ---
+
+export interface RankedArticle {
+  title: string;
+  views: number;
+  rank: number;
+}
+
+// Rank ranges for each rarity tier (based on Wikipedia pageview rankings)
+export const TIER_RANGES: Record<string, [number, number]> = {
+  LR: [1, 10],
+  UR: [11, 50],
+  SSR: [51, 200],
+  SR: [201, 500],
+  R: [501, 1000],
 };
+
+let cachedArticles: RankedArticle[] | null = null;
+let cacheTime = 0;
+const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
+
+/** Fetch the top ~1000 most-viewed Wikipedia articles from Wikimedia's Pageviews API */
+export async function fetchTopArticles(): Promise<RankedArticle[]> {
+  if (cachedArticles && Date.now() - cacheTime < CACHE_DURATION) {
+    return cachedArticles;
+  }
+
+  try {
+    // Use 2 days ago to ensure data is available
+    const date = new Date(Date.now() - 2 * 86400000);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    const res = await fetch(
+      `https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access/${year}/${month}/${day}`,
+      { headers: { 'Api-User-Agent': 'WikiPull/1.0 (https://github.com/jacksonspindle/wiki-pull)' } }
+    );
+
+    if (!res.ok) throw new Error(`Pageviews API ${res.status}`);
+
+    const data = await res.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawArticles: any[] = data.items?.[0]?.articles || [];
+
+    // Filter out non-content pages, then re-rank
+    let rank = 0;
+    const ranked: RankedArticle[] = [];
+    for (const a of rawArticles) {
+      const title: string = a.article;
+      if (
+        title === 'Main_Page' ||
+        title === 'Special:Search' ||
+        title.startsWith('Special:') ||
+        title.startsWith('Wikipedia:') ||
+        title.startsWith('File:') ||
+        title.startsWith('Portal:') ||
+        title.startsWith('Help:') ||
+        title.startsWith('Template:') ||
+        title.startsWith('Category:') ||
+        title === '-'
+      ) continue;
+
+      rank++;
+      ranked.push({
+        title: title.replace(/_/g, ' '),
+        views: a.views,
+        rank,
+      });
+    }
+
+    cachedArticles = ranked;
+    cacheTime = Date.now();
+    return ranked;
+  } catch {
+    return cachedArticles || [];
+  }
+}
+
+/** Get the articles that fall within a specific rarity tier's rank range */
+export function getArticlesForTier(rarity: string, articles: RankedArticle[]): RankedArticle[] {
+  const range = TIER_RANGES[rarity];
+  if (!range) return [];
+  const [start, end] = range;
+  return articles.filter(a => a.rank >= start && a.rank <= end);
+}
+
+/** Pick a random article from a rarity tier using live pageview data */
+async function pickArticleFromTier(rarity: Rarity): Promise<string | null> {
+  const topArticles = await fetchTopArticles();
+
+  if (topArticles.length > 0) {
+    const pool = getArticlesForTier(rarity, topArticles);
+    if (pool.length > 0) {
+      return pool[Math.floor(Math.random() * pool.length)].title;
+    }
+  }
+
+  return null;
+}
+
+// --- Category detection ---
 
 function detectCategory(title: string, extract: string): CardCategory {
   const text = `${title} ${extract}`.toLowerCase();
@@ -166,6 +186,8 @@ function detectCategory(title: string, extract: string): CardCategory {
   return 'General';
 }
 
+// --- Wikipedia API helpers ---
+
 async function fetchRandomArticle(): Promise<WikiSummary | null> {
   try {
     const res = await fetch(`${WIKI_API_BASE}/page/random/summary`, {
@@ -216,12 +238,6 @@ async function fetchArticleMeta(title: string): Promise<{ length: number; langua
   }
 }
 
-function pickArticleFromTier(rarity: Rarity): string | null {
-  const tier = TOP_ARTICLES[rarity];
-  if (!tier) return null;
-  return tier[Math.floor(Math.random() * tier.length)];
-}
-
 function estimatePageviews(rarity: Rarity): number {
   const ranges: Record<Rarity, [number, number]> = {
     LR: [50000000, 100000000],
@@ -236,6 +252,8 @@ function estimatePageviews(rarity: Rarity): number {
   return Math.floor(min + Math.random() * (max - min));
 }
 
+// --- Card generation ---
+
 export async function generateCard(rarity: Rarity): Promise<WikiCard | null> {
   let summary: WikiSummary | null = null;
 
@@ -249,7 +267,7 @@ export async function generateCard(rarity: Rarity): Promise<WikiCard | null> {
       }
     }
   } else {
-    const title = pickArticleFromTier(rarity);
+    const title = await pickArticleFromTier(rarity);
     if (title) {
       summary = await fetchArticleSummary(title);
     }
