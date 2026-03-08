@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { WikiCard, RARITY_CONFIG, Rarity } from '@/types';
 
@@ -35,8 +36,10 @@ function getImageHeight(rarity: Rarity): string {
 }
 
 export default function Card({ card, isRevealed = true, size = 'medium', onClick }: CardProps) {
+  const [imgFailed, setImgFailed] = useState(false);
   const config = RARITY_CONFIG[card.rarity];
   const isFullArt = config.imageSize === 'full';
+  const hasImage = card.imageUrl && !imgFailed;
 
   const sizeClasses = {
     small: 'w-44 h-64',
@@ -86,15 +89,27 @@ export default function Card({ card, isRevealed = true, size = 'medium', onClick
         <div className="absolute -inset-0.5 rounded-xl bg-yellow-500/20 animate-pulse -z-10 blur-sm" />
       )}
 
-      {isFullArt && card.imageUrl ? (
+      {isFullArt ? (
         // Full art layout (UR / LR)
-        <div className="relative w-full h-full">
-          <img
-            src={card.imageUrl}
-            alt={card.title}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/30" />
+        <div className={`relative w-full h-full ${!hasImage ? `bg-gradient-to-b ${config.bgGradient}` : ''}`}>
+          {hasImage ? (
+            <>
+              <img
+                src={card.imageUrl!}
+                alt={card.title}
+                className="w-full h-full object-cover"
+                onError={() => setImgFailed(true)}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/30" />
+            </>
+          ) : (
+            <>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-[120px] font-bold text-white/[0.04] select-none font-serif">W</span>
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+            </>
+          )}
 
           {/* Rarity badge */}
           <div className="absolute top-3 left-3 z-10">
@@ -147,12 +162,13 @@ export default function Card({ card, isRevealed = true, size = 'medium', onClick
           </div>
 
           {/* Image */}
-          {card.imageUrl && config.imageSize !== 'none' ? (
+          {hasImage && config.imageSize !== 'none' ? (
             <div className={`mx-3 ${getImageHeight(card.rarity)} rounded-lg overflow-hidden bg-black/30 shrink-0`}>
               <img
-                src={card.imageUrl}
+                src={card.imageUrl!}
                 alt={card.title}
                 className="w-full h-full object-cover"
+                onError={() => setImgFailed(true)}
               />
             </div>
           ) : (
