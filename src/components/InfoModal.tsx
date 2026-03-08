@@ -1,7 +1,80 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { RARITY_CONFIG, RARITY_ORDER } from '@/types';
+import { RARITY_CONFIG, RARITY_ORDER, Rarity } from '@/types';
+import { TOP_ARTICLES } from '@/lib/wikipedia';
+import { useState } from 'react';
+
+const CURATED_TIERS: { rarity: Rarity; description: string }[] = [
+  { rarity: 'LR', description: 'The 10 most iconic, foundational Wikipedia articles.' },
+  { rarity: 'UR', description: 'Legendary figures, celestial bodies, and world-shaping concepts.' },
+  { rarity: 'SSR', description: 'Major cultural touchstones, global phenomena, and famous entities.' },
+  { rarity: 'SR', description: 'Notable people, landmarks, species, and cultural works.' },
+  { rarity: 'R', description: 'Fascinating niche topics, curious creatures, and hidden gems.' },
+];
+
+function TierList() {
+  const [expandedTier, setExpandedTier] = useState<string | null>(null);
+
+  return (
+    <div className="space-y-2">
+      {CURATED_TIERS.map(({ rarity, description }) => {
+        const articles = TOP_ARTICLES[rarity] || [];
+        const isExpanded = expandedTier === rarity;
+        return (
+          <div key={rarity} className="bg-gray-950 border border-gray-800 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setExpandedTier(isExpanded ? null : rarity)}
+              className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-800/30 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className={`font-bold text-sm ${RARITY_CONFIG[rarity].color}`}>{rarity}</span>
+                <span className="text-gray-400 text-xs">{RARITY_CONFIG[rarity].name}</span>
+                <span className="text-gray-600 text-xs font-mono">{articles.length} articles</span>
+              </div>
+              <span className={`text-gray-500 text-xs transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                &#9660;
+              </span>
+            </button>
+            {isExpanded && (
+              <div className="px-4 pb-3 border-t border-gray-800">
+                <p className="text-gray-500 text-[10px] mt-2 mb-2">{description}</p>
+                <div className="flex flex-wrap gap-1">
+                  {articles.map((title) => (
+                    <span
+                      key={title}
+                      className={`px-1.5 py-0.5 rounded text-[10px] bg-gray-800 border border-gray-700 ${RARITY_CONFIG[rarity].color}`}
+                    >
+                      {title}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* C and UC */}
+      <div className="bg-gray-950 border border-gray-800 rounded-lg px-4 py-3">
+        <div className="flex items-center gap-3">
+          <span className={`font-bold text-sm ${RARITY_CONFIG.UC.color}`}>UC</span>
+          <span className="text-gray-400 text-xs">{RARITY_CONFIG.UC.name}</span>
+          <span className="text-gray-600 text-xs font-mono">random API</span>
+        </div>
+        <p className="text-gray-500 text-[10px] mt-1">Any Wikipedia article with a reasonable extract (retries short stubs).</p>
+      </div>
+      <div className="bg-gray-950 border border-gray-800 rounded-lg px-4 py-3">
+        <div className="flex items-center gap-3">
+          <span className={`font-bold text-sm ${RARITY_CONFIG.C.color}`}>C</span>
+          <span className="text-gray-400 text-xs">{RARITY_CONFIG.C.name}</span>
+          <span className="text-gray-600 text-xs font-mono">random API</span>
+        </div>
+        <p className="text-gray-500 text-[10px] mt-1">Any of Wikipedia&apos;s 6.8M+ English articles, completely random.</p>
+      </div>
+    </div>
+  );
+}
 
 interface InfoModalProps {
   isOpen: boolean;
@@ -100,6 +173,40 @@ export default function InfoModal({ isOpen, onClose }: InfoModalProps) {
                     </p>
                   </div>
                 </div>
+              </section>
+
+              {/* === HOW RARITY IS DETERMINED === */}
+              <section>
+                <h3 className="text-yellow-500 font-bold text-sm tracking-wider mb-3">WHERE CARDS COME FROM</h3>
+
+                <div className="bg-gray-950 border border-gray-800 rounded-lg p-4 mb-4">
+                  <div className="text-blue-400 text-xs font-bold mb-2">TWO SYSTEMS</div>
+                  <p className="text-gray-400 text-xs leading-relaxed">
+                    When you pull a card, the rarity is rolled first (see odds above). Then the article is selected based on the rarity tier:
+                  </p>
+                </div>
+
+                <div className="space-y-3 mb-4">
+                  <div className="bg-gray-950 border border-gray-800 rounded-lg p-4">
+                    <div className="text-green-400 text-xs font-bold mb-2">CURATED POOL (R, SR, SSR, UR, LR)</div>
+                    <p className="text-gray-400 text-xs leading-relaxed">
+                      Each of these tiers has a <span className="text-white font-medium">fixed, hand-picked list</span> of specific Wikipedia articles. When you roll one of these rarities, one article is chosen at random from that tier&apos;s list. The pool is finite — every possible card you can pull at these rarities is listed below.
+                    </p>
+                  </div>
+                  <div className="bg-gray-950 border border-gray-800 rounded-lg p-4">
+                    <div className="text-gray-300 text-xs font-bold mb-2">RANDOM WIKIPEDIA (C, UC)</div>
+                    <p className="text-gray-400 text-xs leading-relaxed">
+                      Common and Uncommon cards are fetched from <span className="text-white font-medium">Wikipedia&apos;s random article API</span>. Any of the 6.8 million+ English Wikipedia articles can appear. There is no fixed list — every pull is a surprise.
+                    </p>
+                  </div>
+                </div>
+
+                <h3 className="text-yellow-500 font-bold text-sm tracking-wider mb-3">COMPLETE ARTICLE POOLS</h3>
+                <p className="text-gray-400 text-xs mb-3">
+                  These are the <span className="text-white">exact and complete</span> lists. There are no hidden cards. Tap a tier to expand.
+                </p>
+
+                <TierList />
               </section>
 
               {/* === CARD STATS === */}
