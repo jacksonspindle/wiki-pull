@@ -24,3 +24,35 @@ export function getPopularityTierRange(rarity: Rarity): { start: number; end: nu
     case 'C': return { start: 20000, end: 100000 };
   }
 }
+
+export function calculateATK(pageviews: number, rarity: Rarity): number {
+  const rarityMultiplier: Record<Rarity, number> = {
+    C: 0.5, UC: 0.7, R: 1.0, SR: 1.3, SSR: 1.6, UR: 2.0, LR: 2.5,
+  };
+  const base = Math.log10(Math.max(pageviews, 1)) * 1000;
+  const atk = Math.round(base * rarityMultiplier[rarity]);
+  return Math.min(15000, Math.max(100, atk));
+}
+
+export function calculateDEF(articleLength: number, rarity: Rarity): number {
+  const rarityMultiplier: Record<Rarity, number> = {
+    C: 0.5, UC: 0.7, R: 1.0, SR: 1.3, SSR: 1.6, UR: 2.0, LR: 2.5,
+  };
+  const base = Math.log10(Math.max(articleLength, 1)) * 1200;
+  const def = Math.round(base * rarityMultiplier[rarity]);
+  return Math.min(15000, Math.max(100, def));
+}
+
+export function calculateRegenPacks(lastRegenTime: string, currentPacks: number, maxPacks: number): number {
+  const elapsed = Date.now() - new Date(lastRegenTime).getTime();
+  const minutesElapsed = Math.floor(elapsed / 60000);
+  const regenPacks = Math.min(minutesElapsed, maxPacks - currentPacks);
+  return Math.max(0, regenPacks);
+}
+
+export function getStardustValue(rarity: Rarity): number {
+  const values: Record<Rarity, number> = {
+    C: 5, UC: 15, R: 50, SR: 150, SSR: 500, UR: 1500, LR: 5000,
+  };
+  return values[rarity];
+}
