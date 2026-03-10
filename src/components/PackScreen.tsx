@@ -8,6 +8,7 @@ import { generatePack } from '@/lib/wikipedia';
 import {
   getGachaState, consumePack, regeneratePacks,
   isGoldPack, resetGoldCounter, addCardsToCollection,
+  loadGachaStateFromServer,
 } from '@/lib/storage';
 import { playPackCrinkle, playTearProgress, playTearComplete, playPackOpen } from '@/lib/sounds';
 import CardReveal from './CardReveal';
@@ -36,10 +37,12 @@ export default function PackScreen({ onCollectionUpdate }: PackScreenProps) {
   const tearStartX = useRef<number | null>(null);
   const lastTearSound = useRef(0);
 
-  // Load gacha state from localStorage after mount
+  // Load gacha state from server (falls back to localStorage)
   useEffect(() => {
-    setGachaState(getGachaState());
-    setMounted(true);
+    loadGachaStateFromServer().then((state) => {
+      setGachaState(state);
+      setMounted(true);
+    });
   }, []);
 
   // Regenerate packs on interval

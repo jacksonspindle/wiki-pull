@@ -52,6 +52,7 @@ export interface WikiCard {
   wikiUrl: string;
   wikiRank: number | null;
   dailyViews: number | null;
+  pageviewDate: string | null;
   pulledAt: string;
   isNew: boolean;
   duplicateCount: number;
@@ -164,3 +165,26 @@ export const RARITY_CONFIG: Record<Rarity, RarityConfig> = {
 };
 
 export const RARITY_ORDER: Rarity[] = ['C', 'UC', 'R', 'SR', 'SSR', 'UR', 'LR'];
+
+export interface Binder {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  cardIds: string[];
+  createdAt: string;
+}
+
+export interface BinderEntry {
+  title: string;
+  displayName?: string;
+}
+
+export interface BinderDefinition {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  entries: BinderEntry[];
+}

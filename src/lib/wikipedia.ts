@@ -35,64 +35,35 @@ export const TIER_RANGES: Record<string, [number, number]> = {
 
 let cachedArticles: RankedArticle[] | null = null;
 let cacheTime = 0;
+let cachedPageviewDate: string | null = null;
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 
-/** Fetch the top ~1000 most-viewed Wikipedia articles from Wikimedia's Pageviews API */
+/** Fetch the top ~1000 most-viewed Wikipedia articles via our server-side proxy
+ *  (Wikimedia's Pageviews API blocks CORS from browsers) */
 export async function fetchTopArticles(): Promise<RankedArticle[]> {
   if (cachedArticles && Date.now() - cacheTime < CACHE_DURATION) {
     return cachedArticles;
   }
 
   try {
-    // Use 2 days ago to ensure data is available
-    const date = new Date(Date.now() - 2 * 86400000);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-
-    const res = await fetch(
-      `https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access/${year}/${month}/${day}`,
-      { headers: { 'Api-User-Agent': 'WikiPull/1.0 (https://github.com/jacksonspindle/wiki-pull)' } }
-    );
-
-    if (!res.ok) throw new Error(`Pageviews API ${res.status}`);
+    const res = await fetch('/api/top-articles');
+    if (!res.ok) throw new Error(`Top articles API ${res.status}`);
 
     const data = await res.json();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rawArticles: any[] = data.items?.[0]?.articles || [];
-
-    // Filter out non-content pages, then re-rank
-    let rank = 0;
-    const ranked: RankedArticle[] = [];
-    for (const a of rawArticles) {
-      const title: string = a.article;
-      if (
-        title === 'Main_Page' ||
-        title === 'Special:Search' ||
-        title.startsWith('Special:') ||
-        title.startsWith('Wikipedia:') ||
-        title.startsWith('File:') ||
-        title.startsWith('Portal:') ||
-        title.startsWith('Help:') ||
-        title.startsWith('Template:') ||
-        title.startsWith('Category:') ||
-        title === '-'
-      ) continue;
-
-      rank++;
-      ranked.push({
-        title: title.replace(/_/g, ' '),
-        views: a.views,
-        rank,
-      });
-    }
+    const ranked: RankedArticle[] = data.articles || [];
 
     cachedArticles = ranked;
+    cachedPageviewDate = data.date || null;
     cacheTime = Date.now();
     return ranked;
   } catch {
     return cachedArticles || [];
   }
+}
+
+/** Get the date string (YYYY/MM/DD) used for the most recent pageview fetch */
+export function getPageviewDate(): string | null {
+  return cachedPageviewDate;
 }
 
 /** Get the articles that fall within a specific rarity tier's rank range */
@@ -257,6 +228,7 @@ function estimatePageviews(rarity: Rarity): number {
 export async function generateCard(rarity: Rarity): Promise<WikiCard | null> {
   let summary: WikiSummary | null = null;
   let rankedArticle: RankedArticle | null = null;
+  let effectiveRarity = rarity;
 
   if (rarity === 'C' || rarity === 'UC') {
     summary = await fetchRandomArticle();
@@ -273,15 +245,17 @@ export async function generateCard(rarity: Rarity): Promise<WikiCard | null> {
       summary = await fetchArticleSummary(rankedArticle.title);
     }
     if (!summary) {
+      // Ranked pool failed — downgrade to UC since this is just a random article
       summary = await fetchRandomArticle();
       rankedArticle = null;
+      effectiveRarity = 'UC';
     }
   }
 
   if (!summary) return null;
 
   const meta = await fetchArticleMeta(summary.title);
-  const estimatedPageviews = estimatePageviews(rarity);
+  const estimatedPageviews = estimatePageviews(effectiveRarity);
 
   const card: WikiCard = {
     id: `${summary.pageid}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -289,16 +263,17 @@ export async function generateCard(rarity: Rarity): Promise<WikiCard | null> {
     extract: summary.extract || summary.description || 'No description available.',
     imageUrl: summary.originalimage?.source || summary.thumbnail?.source || null,
     thumbnailUrl: summary.thumbnail?.source || null,
-    rarity,
+    rarity: effectiveRarity,
     category: detectCategory(summary.title, summary.extract || ''),
-    atk: calculateATK(estimatedPageviews, rarity),
-    def: calculateDEF(meta.length || summary.extract?.length || 100, rarity),
+    atk: calculateATK(estimatedPageviews, effectiveRarity),
+    def: calculateDEF(meta.length || summary.extract?.length || 100, effectiveRarity),
     pageviews: estimatedPageviews,
     articleLength: meta.length,
     languages: meta.languages,
     wikiUrl: summary.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${encodeURIComponent(summary.title)}`,
     wikiRank: rankedArticle?.rank ?? null,
     dailyViews: rankedArticle?.views ?? null,
+    pageviewDate: rankedArticle ? getPageviewDate() : null,
     pulledAt: new Date().toISOString(),
     isNew: true,
     duplicateCount: 0,
@@ -307,7 +282,18 @@ export async function generateCard(rarity: Rarity): Promise<WikiCard | null> {
   return card;
 }
 
+async function generateCardWithRetry(rarity: Rarity): Promise<WikiCard | null> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const card = await generateCard(rarity);
+    if (card) return card;
+  }
+  return null;
+}
+
 export async function generatePack(rarities: Rarity[]): Promise<WikiCard[]> {
-  const cards = await Promise.all(rarities.map(r => generateCard(r)));
+  // Pre-fetch the top articles once so all ranked cards share the cached result
+  await fetchTopArticles();
+
+  const cards = await Promise.all(rarities.map(r => generateCardWithRetry(r)));
   return cards.filter((c): c is WikiCard => c !== null);
 }
