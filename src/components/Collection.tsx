@@ -6,6 +6,7 @@ import { WikiCard, Rarity, CardCategory, RARITY_CONFIG, RARITY_ORDER, Collection
 import { getStardustValue } from '@/lib/rarity';
 import { convertDuplicateToStardust } from '@/lib/storage';
 import Card from './Card';
+import RarityReason from './RarityReason';
 
 interface CollectionProps {
   collection: CollectionType;
@@ -221,6 +222,18 @@ export default function Collection({ collection, onUpdate }: CollectionProps) {
               className="flex flex-col items-center gap-5"
             >
               <Card card={selectedCard} size="large" />
+
+              {/* Rarity label + reason */}
+              {RARITY_ORDER.indexOf(selectedCard.rarity) >= 2 && (
+                <div className="text-center max-w-xs">
+                  <span className={`text-lg font-bold ${RARITY_CONFIG[selectedCard.rarity].color}`}>
+                    {RARITY_CONFIG[selectedCard.rarity].name}
+                  </span>
+                  <p className="text-gray-500 text-xs mt-2 leading-relaxed">
+                    <RarityReason card={selectedCard} />
+                  </p>
+                </div>
+              )}
 
               <div className="flex gap-3 flex-wrap justify-center">
                 <a

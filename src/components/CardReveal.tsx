@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { WikiCard, RARITY_CONFIG, Rarity, RARITY_ORDER } from '@/types';
 import { playCardFlip, playCardReveal } from '@/lib/sounds';
 import Card from './Card';
+import RarityReason from './RarityReason';
 
 interface CardRevealProps {
   cards: WikiCard[];
@@ -108,33 +109,6 @@ function RarityFlare({ rarity }: { rarity: Rarity }) {
       />
     </div>
   );
-}
-
-function RarityReason({ card }: { card: WikiCard }) {
-  const { rarity, wikiRank, dailyViews, title } = card;
-
-  if (wikiRank && dailyViews) {
-    const viewsFormatted = dailyViews.toLocaleString();
-    const ordinal = wikiRank === 1 ? '1st' : wikiRank === 2 ? '2nd' : wikiRank === 3 ? '3rd' : `${wikiRank}th`;
-    return (
-      <>
-        <span className="text-gray-300">&ldquo;{title}&rdquo;</span> is the{' '}
-        <span className="text-white font-medium">{ordinal} most-viewed</span> article on Wikipedia right now
-        with <span className="text-white font-medium">{viewsFormatted}</span> views yesterday.
-      </>
-    );
-  }
-
-  // Fallback for cards without rank data
-  const reasons: Record<string, string> = {
-    LR: 'One of the most-viewed pages on all of Wikipedia.',
-    UR: 'Among the top 50 most-visited Wikipedia articles.',
-    SSR: 'In the top 200 most-trafficked articles on Wikipedia.',
-    SR: 'Ranks in the top 500 most-viewed Wikipedia pages.',
-    R: 'A top-1000 Wikipedia article by daily pageviews.',
-  };
-
-  return <>{reasons[rarity] || ''}</>;
 }
 
 export default function CardReveal({ cards, onComplete }: CardRevealProps) {
