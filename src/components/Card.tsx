@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { WikiCard, RARITY_CONFIG, Rarity } from '@/types';
+import { getBindersForCard } from '@/lib/binders';
 
 interface CardProps {
   card: WikiCard;
@@ -24,8 +25,17 @@ function getRarityBorderStyle(rarity: Rarity): string {
   }
 }
 
-function getImageHeight(rarity: Rarity): string {
+function getImageHeight(rarity: Rarity, size: 'small' | 'medium' | 'large'): string {
   const config = RARITY_CONFIG[rarity];
+  if (size === 'small') {
+    switch (config.imageSize) {
+      case 'none': return 'h-0';
+      case 'small': return 'h-16';
+      case 'medium': return 'h-24';
+      case 'large': return 'h-28';
+      case 'full': return 'h-full';
+    }
+  }
   switch (config.imageSize) {
     case 'none': return 'h-0';
     case 'small': return 'h-28';
@@ -33,6 +43,27 @@ function getImageHeight(rarity: Rarity): string {
     case 'large': return 'h-48';
     case 'full': return 'h-full';
   }
+}
+
+function CardPills({ card, size }: { card: WikiCard; size: 'small' | 'medium' | 'large' }) {
+  const binders = useMemo(() => getBindersForCard(card.title), [card.title]);
+  const isSmall = size === 'small';
+
+  return (
+    <div className="flex gap-1 flex-wrap">
+      <span className={`${isSmall ? 'text-[8px] px-1.5 py-0.5' : 'text-[9px] px-2 py-0.5'} rounded-full bg-white/10 text-gray-300 font-medium`}>
+        {card.category}
+      </span>
+      {binders.map((b) => (
+        <span
+          key={b.name}
+          className={`${isSmall ? 'text-[8px] px-1.5 py-0.5' : 'text-[9px] px-2 py-0.5'} rounded-full bg-yellow-500/15 text-yellow-400 font-medium`}
+        >
+          {b.icon} {b.name}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 export default function Card({ card, isRevealed = true, size = 'medium', onClick }: CardProps) {
@@ -126,23 +157,25 @@ export default function Card({ card, isRevealed = true, size = 'medium', onClick
           )}
 
           {/* Card info overlay */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
-            <div className="text-[10px] text-gray-400 font-medium mb-1">{card.category}</div>
-            <h3 className="text-white font-bold text-lg leading-tight mb-1 drop-shadow-lg">
+          <div className={`absolute bottom-0 left-0 right-0 z-10 ${size === 'small' ? 'p-2.5' : 'p-4'}`}>
+            <div className="mb-1"><CardPills card={card} size={size} /></div>
+            <h3 className={`text-white font-bold leading-tight mb-0.5 drop-shadow-lg ${size === 'small' ? 'text-sm' : 'text-lg'}`}>
               {card.title}
             </h3>
-            <p className="text-gray-300 text-[11px] leading-relaxed line-clamp-2 drop-shadow">
-              {card.extract}
-            </p>
+            {size !== 'small' && (
+              <p className="text-gray-300 text-[11px] leading-relaxed line-clamp-2 drop-shadow">
+                {card.extract}
+              </p>
+            )}
 
-            <div className="flex gap-3 mt-3">
-              <div className="flex-1 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2 text-center">
-                <div className="text-red-400 text-[10px] font-bold tracking-widest">ATK</div>
-                <div className="text-white font-bold text-base font-mono">{card.atk.toLocaleString()}</div>
+            <div className={`flex ${size === 'small' ? 'gap-2 mt-1.5' : 'gap-3 mt-3'}`}>
+              <div className={`flex-1 bg-black/50 backdrop-blur-sm rounded-lg text-center ${size === 'small' ? 'px-2 py-1' : 'px-3 py-2'}`}>
+                <div className={`text-red-400 font-bold tracking-widest ${size === 'small' ? 'text-[8px]' : 'text-[10px]'}`}>ATK</div>
+                <div className={`text-white font-bold font-mono ${size === 'small' ? 'text-xs' : 'text-base'}`}>{card.atk.toLocaleString()}</div>
               </div>
-              <div className="flex-1 bg-black/50 backdrop-blur-sm rounded-lg px-3 py-2 text-center">
-                <div className="text-blue-400 text-[10px] font-bold tracking-widest">DEF</div>
-                <div className="text-white font-bold text-base font-mono">{card.def.toLocaleString()}</div>
+              <div className={`flex-1 bg-black/50 backdrop-blur-sm rounded-lg text-center ${size === 'small' ? 'px-2 py-1' : 'px-3 py-2'}`}>
+                <div className={`text-blue-400 font-bold tracking-widest ${size === 'small' ? 'text-[8px]' : 'text-[10px]'}`}>DEF</div>
+                <div className={`text-white font-bold font-mono ${size === 'small' ? 'text-xs' : 'text-base'}`}>{card.def.toLocaleString()}</div>
               </div>
             </div>
           </div>
@@ -163,7 +196,7 @@ export default function Card({ card, isRevealed = true, size = 'medium', onClick
 
           {/* Image */}
           {hasImage && config.imageSize !== 'none' ? (
-            <div className={`mx-3 ${getImageHeight(card.rarity)} rounded-lg overflow-hidden bg-black/30 shrink-0`}>
+            <div className={`mx-3 ${getImageHeight(card.rarity, size)} rounded-lg overflow-hidden bg-black/30 shrink-0`}>
               <img
                 src={card.imageUrl!}
                 alt={card.title}
@@ -178,26 +211,26 @@ export default function Card({ card, isRevealed = true, size = 'medium', onClick
           )}
 
           {/* Extract */}
-          <div className="flex-1 px-3 py-2 overflow-hidden min-h-0">
-            <p className="text-gray-400 text-[10px] leading-relaxed line-clamp-4">
+          <div className="flex-1 px-3 py-1 overflow-hidden min-h-0">
+            <p className={`text-gray-400 text-[10px] leading-relaxed ${size === 'small' ? 'line-clamp-2' : 'line-clamp-4'}`}>
               {card.extract}
             </p>
           </div>
 
-          {/* Category */}
-          <div className="px-3 pb-1">
-            <span className="text-[9px] text-gray-600 font-medium">{card.category}</span>
+          {/* Category & binder pills */}
+          <div className="px-3 pb-1 shrink-0">
+            <CardPills card={card} size={size} />
           </div>
 
           {/* Stats */}
           <div className="flex border-t border-white/10 mt-auto shrink-0">
-            <div className="flex-1 px-3 py-2 text-center border-r border-white/10">
+            <div className={`flex-1 text-center border-r border-white/10 ${size === 'small' ? 'px-2 py-1' : 'px-3 py-2'}`}>
               <div className="text-red-400 text-[9px] font-bold tracking-widest">ATK</div>
-              <div className="text-white font-bold text-sm font-mono">{card.atk.toLocaleString()}</div>
+              <div className={`text-white font-bold font-mono ${size === 'small' ? 'text-xs' : 'text-sm'}`}>{card.atk.toLocaleString()}</div>
             </div>
-            <div className="flex-1 px-3 py-2 text-center">
+            <div className={`flex-1 text-center ${size === 'small' ? 'px-2 py-1' : 'px-3 py-2'}`}>
               <div className="text-blue-400 text-[9px] font-bold tracking-widest">DEF</div>
-              <div className="text-white font-bold text-sm font-mono">{card.def.toLocaleString()}</div>
+              <div className={`text-white font-bold font-mono ${size === 'small' ? 'text-xs' : 'text-sm'}`}>{card.def.toLocaleString()}</div>
             </div>
           </div>
         </div>
